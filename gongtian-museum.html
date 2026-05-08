@@ -1,0 +1,1194 @@
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>公田村博物馆 - 藏品展示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8B4513',
+                        secondary: '#D2B48C',
+                        accent: '#CD853F',
+                        dark: '#3E2723',
+                        light: '#F5F5DC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        serif: ['"Noto Serif SC"', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); }
+        }
+    </style>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            background-color: #F5F5DC;
+            overflow-x: hidden;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+            /* 防止浏览器原生下拉刷新冲突 */
+        }
+
+        .page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            pointer-events: none;
+            padding-bottom: 3rem;
+            /* 底部留白防遮挡 */
+            overscroll-behavior-y: contain;
+            will-change: transform;
+        }
+
+        .page.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 2;
+            pointer-events: auto;
+        }
+
+        /* 3D Gallery */
+        .gallery-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 40vh;
+            position: relative;
+            touch-action: pan-y;
+        }
+
+        @media (min-width: 768px) {
+            .gallery-container {
+                height: 60vh;
+            }
+        }
+
+        .gallery {
+            transform-style: preserve-3d;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .gallery-item {
+            position: absolute;
+            width: 76%;
+            height: 80%;
+            left: 12%;
+            top: 10%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            -webkit-user-drag: none;
+            /* 阻止原生拖拽 */
+        }
+
+        /* 优化后的箭头风格：半透明磨砂质感 */
+        .gallery-nav {
+            background-color: rgba(210, 180, 140, 0.5);
+            /* 淡淡的大地色 */
+            color: #3E2723;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(139, 69, 19, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .gallery-nav:active {
+            transform: scale(0.9);
+            background-color: rgba(210, 180, 140, 0.8);
+        }
+
+        /* Card Flip Animation */
+        .flip-card {
+            background-color: transparent;
+            width: 100%;
+            height: 160px;
+            perspective: 1000px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        @media (min-width: 768px) {
+            .flip-card {
+                height: 200px;
+            }
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .flip-card-front {
+            background-color: #8B4513;
+            color: white;
+        }
+
+        .flip-card-back {
+            background-color: #D2B48C;
+            color: #3E2723;
+            transform: rotateY(180deg);
+        }
+
+        /* Navigation Dots */
+        .nav-dots {
+            position: fixed;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        @media (min-width: 768px) {
+            .nav-dots {
+                right: 20px;
+                gap: 10px;
+            }
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: rgba(139, 69, 19, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background-color: #8B4513;
+            transform: scale(1.4);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background-color: #8B4513;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(139, 69, 19, 0.2);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #F5F5DC;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #D2B48C;
+            border-top: 4px solid #8B4513;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 边缘拖拽提示文字样式 */
+        .pull-indicator {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: rgba(139, 69, 19, 0.7);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 10;
+        }
+
+        .pull-indicator.top {
+            top: -40px;
+        }
+
+        .pull-indicator.bottom {
+            bottom: -40px;
+        }
+
+        /* Background Units */
+        .unit-1 {
+            background: linear-gradient(135deg, rgba(245, 245, 220, 0.95) 0%, rgba(210, 180, 140, 0.95) 100%);
+        }
+
+        .unit-2 {
+            background: linear-gradient(135deg, rgba(210, 180, 140, 0.95) 0%, rgba(205, 133, 63, 0.95) 100%);
+        }
+
+        .unit-3 {
+            background: linear-gradient(135deg, rgba(205, 133, 63, 0.95) 0%, rgba(139, 69, 19, 0.95) 100%);
+        }
+
+        .unit-4 {
+            background: linear-gradient(135deg, rgba(139, 69, 19, 0.95) 0%, rgba(62, 39, 35, 0.95) 100%);
+            color: white;
+        }
+
+        .unit-5 {
+            background: linear-gradient(135deg, rgba(62, 39, 35, 0.95) 0%, rgba(139, 69, 19, 0.95) 100%);
+            color: white;
+        }
+
+        .unit-6 {
+            background: linear-gradient(135deg, rgba(139, 69, 19, 0.95) 0%, rgba(205, 133, 63, 0.95) 100%);
+        }
+
+        .unit-7 {
+            background: linear-gradient(135deg, rgba(205, 133, 63, 0.95) 0%, rgba(210, 180, 140, 0.95) 100%);
+        }
+
+        .unit-8 {
+            background: linear-gradient(135deg, rgba(210, 180, 140, 0.95) 0%, rgba(245, 245, 220, 0.95) 100%);
+        }
+
+        .unit-9 {
+            background: linear-gradient(135deg, rgba(245, 245, 220, 0.95) 0%, rgba(210, 180, 140, 0.95) 100%);
+        }
+
+        .unit-10 {
+            background: linear-gradient(135deg, rgba(210, 180, 140, 0.95) 0%, rgba(205, 133, 63, 0.95) 100%);
+        }
+
+        .unit-11 {
+            background: linear-gradient(135deg, rgba(205, 133, 63, 0.95) 0%, rgba(139, 69, 19, 0.95) 100%);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div class="loading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Lightbox Modal (点击放大图片的弹层) -->
+    <div id="lightbox"
+        class="fixed inset-0 z-[10000] bg-black/95 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <button id="lightbox-close"
+            class="absolute top-6 right-6 text-white text-3xl opacity-80 hover:opacity-100 p-2"><i
+                class="fa fa-times"></i></button>
+        <img id="lightbox-img"
+            class="max-w-full max-h-full object-contain rounded-lg shadow-2xl scale-95 transition-transform duration-300"
+            src="" alt="大图预览">
+    </div>
+
+    <!-- Navigation Dots -->
+    <div class="nav-dots">
+        <div class="nav-dot active" data-page="0"></div>
+        <div class="nav-dot" data-page="1"></div>
+        <div class="nav-dot" data-page="2"></div>
+        <div class="nav-dot" data-page="3"></div>
+        <div class="nav-dot" data-page="4"></div>
+        <div class="nav-dot" data-page="5"></div>
+        <div class="nav-dot" data-page="6"></div>
+        <div class="nav-dot" data-page="7"></div>
+        <div class="nav-dot" data-page="8"></div>
+        <div class="nav-dot" data-page="9"></div>
+        <div class="nav-dot" data-page="10"></div>
+        <div class="nav-dot" data-page="11"></div>
+    </div>
+
+    <!-- Home Page -->
+    <div id="page-0" class="page active flex flex-col items-center justify-center min-h-screen p-6 relative">
+        <div class="text-center mb-8 max-w-2xl mx-auto">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-primary mb-4 text-shadow leading-tight">公田村博物馆
+            </h1>
+            <p class="text-lg md:text-2xl text-dark mb-8 opacity-90">探索河套农耕文化的历史与传承</p>
+            <button class="nav-btn btn-primary px-8 py-3 text-lg" data-page="1">
+                开始参观 <i class="fa fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Unit 1: 自然环境 -->
+    <div id="page-1" class="page unit-1 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第一单元：自然环境</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-1">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/9eb99b4182c242d68d6bec91697c8b6e~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507221955B3E1AAEF8648FF228843&amp;rrcfp=e75484ac&amp;x-expires=1778768396&amp;x-signature=F4McA1qCX3mWGQ46yshdFzm7fz8%3D"
+                            alt="河套平原自然风光"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/76ebc3a67e5b4805acd48eccd8607693~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507213622567171CA66BC73D239C8&amp;rrcfp=e75484ac&amp;x-expires=1778765783&amp;x-signature=Neuqmh5JtAdyNIjROBubfPe%2BPSA%3D"
+                            alt="肥沃的土壤"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/f8a1919c285d471281eb313d07443987~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507213810D89460F9FB195A4A22F2&amp;rrcfp=e75484ac&amp;x-expires=1778765891&amp;x-signature=Lv5eIVwZ03yahqmCAL1veC0v11k%3D"
+                            alt="黄河景观"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/04fc22d9296448c39cf2e30780bff258~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507213958B5053E52D9190CFFD18C&amp;rrcfp=e75484ac&amp;x-expires=1778765998&amp;x-signature=aWLVgG6yN1VrF8ErPaa1ukhGDyo%3D"
+                            alt="九曲黄河阵"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-1 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-1 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- mt-16: 往下挪，避免和箭头重合 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元介绍河套农耕文化赖以形成的自然条件，包括肥沃的土壤、适宜的气候、丰富的矿产资源以及独特的黄河民俗文化。</p>
+                <p>河套平原地势平坦，土壤肥沃，黄河水灌溉便利，为农业发展提供了得天独厚的自然条件。这里的气候特点是昼夜温差大，有利于农作物养分积累，产出的农产品品质优良。</p>
+                <p>九曲黄河阵是当地独特的民俗活动，每年正月举行，象征着人们对风调雨顺、五谷丰登的祈盼。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="0"><i class="fa fa-arrow-left mr-1"></i>
+                    首页</button>
+                <button class="nav-btn btn-primary text-sm" data-page="2">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 2: 农耕生产 -->
+    <div id="page-2" class="page unit-2 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第二单元：农耕生产</h2>
+            <!-- 恢复原有 Flip Cards -->
+            <div class="grid grid-cols-2 gap-3 md:gap-6 mb-8 px-2">
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">传统农具展示</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">展示犁、铁锹、播种机、扇车、石碾等传统农具，呈现农耕工具的演变与发展历程。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">农耕生产流程</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">从春耕、夏耘到秋收、冬藏，完整展示传统农业生产的全过程及其蕴含的智慧。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-2">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/5cc621788398403481a0872dbb9a6d01~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507222826FC751E8FCAE0B1DFACCB&amp;rrcfp=e75484ac&amp;x-expires=1778768907&amp;x-signature=JqTnIKx88RwsT9MI%2BiFu9XZiGtY%3D"
+                            alt="传统犁具"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/3d7ac95654404d72a90877dd8e276515~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=202605072229440EA78DBB6718FD1FB9C3&amp;rrcfp=e75484ac&amp;x-expires=1778768985&amp;x-signature=X%2BRQA6oFhb1ydHKmLZCL5xOpNck%3D"
+                            alt="播种机"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/e74722451e4b4e95b271ce2d80c51fce~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722295766D346BBDC7BA372D47C&amp;rrcfp=e75484ac&amp;x-expires=1778768997&amp;x-signature=RaB%2FYghqnxZ49J1hNXsGtFaI%2BEQ%3D"
+                            alt="扇车"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/7b2dcc3fa6374bdd8ad1390700ed2419~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223024D8A1E01D1CCC8D2003AF&amp;rrcfp=e75484ac&amp;x-expires=1778769025&amp;x-signature=30zi8MZ6o6TRRsol4kS7G0kmpeM%3D"
+                            alt="石碾"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-2 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-2 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留一字不落 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>农耕生产是河套文化的核心，本单元通过展示各种传统农具，呈现了当地农业生产的发展历程。</p>
+                <p>从原始的手工农具到半机械化工具，每一件农具都凝聚着劳动人民的智慧，反映了农业生产力的不断进步。</p>
+                <p>通过这些农具，我们可以了解到河套地区独特的农业生产方式和技术传统，以及它们如何适应本地的自然条件。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="1"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="3">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 3: 养殖副业 -->
+    <div id="page-3" class="page unit-3 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-light mb-6 text-center">第三单元：养殖副业</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-3">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/926e15594fc241da95fc25d67f2992e8~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223148E2DD37A1AAEAFC3A7700&amp;rrcfp=e75484ac&amp;x-expires=1778769109&amp;x-signature=SH0E1DvZn6Zdv3FWHl5Oin72oB8%3D"
+                            alt="传统畜牧业"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/5d0482960b4342f6806e55052cb71d0b~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223206CDEC26CA46ECA23C0F60&amp;rrcfp=e75484ac&amp;x-expires=1778769126&amp;x-signature=wjFp8MQWf1bH6CPoDQhtbQ%2FVaao%3D"
+                            alt="工匠作坊"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/9a1d0d8d10f942b9912676be4218fa8d~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223228ACF547495347051D0128&amp;rrcfp=e75484ac&amp;x-expires=1778769148&amp;x-signature=2vax3ImffF45xrtEUdGzhylga2M%3D"
+                            alt="百年油梁"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/ba01d6d240b54f849f3e63790cba57ea~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=202605072233025AAE726D99CA3A2F5A5A&amp;rrcfp=e75484ac&amp;x-expires=1778769183&amp;x-signature=NdJMB81Wq1vDwuAcatvsgarkZzI%3D"
+                            alt="传统榨油工艺"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-3 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-3 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-light text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>除了主要的农耕生产外，养殖和各种副业也是河套地区农村经济的重要组成部分。</p>
+                <p>本单元展示了传统的畜牧业、工匠作坊以及有着百年历史的传统榨油工艺（百年油梁）等农耕辅助产业。</p>
+                <p>这些副业不仅丰富了农村经济，也形成了独特的技艺传承和文化传统，是河套农耕文化不可或缺的组成部分。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary bg-light text-primary text-sm" data-page="2"><i
+                        class="fa fa-arrow-left mr-1"></i> 上一单元</button>
+                <button class="nav-btn btn-primary bg-light text-primary text-sm" data-page="4">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 4: 岁时节日 -->
+    <div id="page-4" class="page unit-4 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-light mb-6 text-center">第四单元：岁时节日</h2>
+            <!-- 恢复原有 Flip Cards -->
+            <div class="grid grid-cols-2 gap-3 md:gap-6 mb-8 px-2">
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front bg-dark">
+                            <h3 class="text-lg md:text-xl font-bold px-2">传统年俗</h3>
+                        </div>
+                        <div class="flip-card-back bg-secondary text-dark">
+                            <p class="text-sm md:text-base px-2">展示河套地区独特的春节习俗，包括贴春联、吃年夜饭、拜年等传统活动。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front bg-dark">
+                            <h3 class="text-lg md:text-xl font-bold px-2">节日面艺</h3>
+                        </div>
+                        <div class="flip-card-back bg-secondary text-dark">
+                            <p class="text-sm md:text-base px-2">中元节的面人和中秋节的月饼模具，展示了节日食品背后的文化内涵。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-4">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/721e94c219204a85a5cb8b88a1d0103c~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223436B9A811D96B7DCB271BD4&amp;rrcfp=e75484ac&amp;x-expires=1778769276&amp;x-signature=JjyFnWwBmmzYxmPU7JOMksswOXs%3D"
+                            alt="十二生肖剪纸"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/c005e8d5f50545b2aa97d76097fbb3f1~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223450C834547474AFBEE670FD&amp;rrcfp=e75484ac&amp;x-expires=1778769290&amp;x-signature=L1HE%2BsUZJkHuiUMTPUJVaZndgts%3D"
+                            alt="传统年俗"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://images.unsplash.com/photo-1563245372-f21724e3856d?ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
+                            alt="中元节面艺"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/94b700f2154f4042b7bee68681cf37fa~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223603BA80FA41C814CF45A4F8&amp;rrcfp=e75484ac&amp;x-expires=1778769364&amp;x-signature=O1ZdYSiwoudhVR6PWLiSGzEiQ%2F0%3D"
+                            alt="月饼模具"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-light text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>岁时节日是农耕文化的重要组成部分，本单元展示了河套地区丰富多彩的传统节日文化。</p>
+                <p>从十二生肖剪纸、传统年俗，到中元节面艺、中秋节月饼模具，这些节日习俗反映了劳动人民对美好生活的向往和对传统文化的传承。</p>
+                <p>每个节日都有其独特的仪式和活动，这些活动不仅丰富了人们的精神生活，也强化了社区的凝聚力和文化认同。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary bg-light text-dark text-sm" data-page="3"><i
+                        class="fa fa-arrow-left mr-1"></i> 上一单元</button>
+                <button class="nav-btn btn-primary bg-light text-dark text-sm" data-page="5">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 5: 塞外乡村 -->
+    <div id="page-5" class="page unit-5 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-light mb-6 text-center">第五单元：塞外乡村</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-5">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/0c394c66bb28489c9e1f030441307042~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722374298E2746243789D4A8523&amp;rrcfp=e75484ac&amp;x-expires=1778769463&amp;x-signature=1ifkB4JoMJDZHmIfouRd91qY%2B2g%3D"
+                            alt="传统家具"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/a9c55adccf504df29635b37bb5473b89~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=202605072238037033D973B1500F18C34F&amp;rrcfp=e75484ac&amp;x-expires=1778769483&amp;x-signature=d9UQZGb8fn29gWCkn0y%2F2ssi%2BY0%3D"
+                            alt="传统灶具"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/666c27e1f7d94c928394b4339b8fa4cb~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722383622532D1A6A43D8468E65&amp;rrcfp=e75484ac&amp;x-expires=1778769516&amp;x-signature=OGuRJNRI1CHgbzGxEtMF9JVqZak%3D"
+                            alt="传统灯具"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/238128f2cabd488bac78c09f990e374a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507223901946C72D8CAE62046904D&amp;rrcfp=e75484ac&amp;x-expires=1778769542&amp;x-signature=ajh1OHEujWZD7MZEMkgJnL%2BjlJs%3D"
+                            alt="农家小院"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-5 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-5 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-light text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元通过陈列家具、灶具、灯具、锁具等生活用具，还原了一个浓缩版的农家小院与乡村生活场景。</p>
+                <p>这些日常生活用品不仅展示了河套地区农村的物质文化，也反映了当地人民的生活方式和审美情趣。</p>
+                <p>从简陋的土炕到精美的木柜，从原始的油灯到实用的灶具，每一件物品都讲述着一个关于生存、生活和传承的故事。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary bg-light text-dark text-sm" data-page="4"><i
+                        class="fa fa-arrow-left mr-1"></i> 上一单元</button>
+                <button class="nav-btn btn-primary bg-light text-dark text-sm" data-page="6">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 6: 娱乐游艺 -->
+    <div id="page-6" class="page unit-6 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第六单元：娱乐游艺</h2>
+            <!-- 恢复原有 Flip Cards -->
+            <div class="grid grid-cols-2 gap-3 md:gap-6 mb-8 px-2">
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">乡村戏剧</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">展示河套地区独特的戏曲文化，包括二人台、晋剧等地方戏曲形式。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">传统游艺</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">展示棋类、纸牌等传统娱乐活动，反映乡村精神文化生活的丰富多彩。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-6">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/d37d9867c8f94f7099cc9df7221a9e20~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224202191E146F3C4CE7DBB302&amp;rrcfp=e75484ac&amp;x-expires=1778769722&amp;x-signature=eeg5ad0YMUsBn6dGx93lWa1C1NU%3D"
+                            alt="乡村戏剧表演"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/922c85b363a040efa0475c7f5d247640~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224231312E4DC9217A6FCACCCF&amp;rrcfp=e75484ac&amp;x-expires=1778769751&amp;x-signature=Z3UnDulcPToN1xAgGZ1uNie9EnE%3D"
+                            alt="座唱活动"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/0b4a67466bdd4141a0d6c74327d30f79~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=202605072242179C16EF215967143AA1BB&amp;rrcfp=e75484ac&amp;x-expires=1778769738&amp;x-signature=Au1jiPNNDYCGlT%2BiliAabhsZyJM%3D"
+                            alt="传统棋类"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/b667a7223c44498ea998af4d0ae235bc~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224059AE177D0003FF2F1E8053&amp;rrcfp=03245832&amp;x-expires=1778769664&amp;x-signature=g4zTNe%2FXX%2FecZNDNPpm88KPF2Hw%3D"
+                            alt="纸牌游戏"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-6 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-6 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元展现了乡村戏剧、座唱、棋类、纸牌等乡村精神文化生活，展示了河套地区农民丰富多彩的娱乐活动。</p>
+                <p>这些娱乐活动不仅是农民劳作之余的休闲方式，也是传统文化传承的重要载体，蕴含着丰富的历史信息和文化内涵。</p>
+                <p>通过这些娱乐游艺活动，我们可以了解到河套地区农民的精神世界和价值观念，以及他们如何在艰苦的环境中保持乐观向上的生活态度。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="5"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="7">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 7: 商贸物流 -->
+    <div id="page-7" class="page unit-7 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第七单元：商贸物流</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-7">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/39b848fdcacb491a88ef21ca81f47c50~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722465054DE725565DE193B659B&amp;rrcfp=e75484ac&amp;x-expires=1778770011&amp;x-signature=6NhP9eK1s4sc4XXcIUhqOm8kAPg%3D"
+                            alt="货郎叫卖"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/b393946b79084b33a6aca93ca51f4c35~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224729A8D77255722716D7E0FC&amp;rrcfp=e75484ac&amp;x-expires=1778770049&amp;x-signature=fGdDdXIR0BTFCZ5ma%2BAPX1lhWG0%3D"
+                            alt="传统集贸市场"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/919ed94eefbd4029bf2112c3c1d476dc~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224747C7EF84FA7AFBBFD6E650&amp;rrcfp=e75484ac&amp;x-expires=1778770068&amp;x-signature=lkQb53ysoTI0WrgZFZDA9hp%2BapA%3D"
+                            alt="商贸活动"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/f8400c753d034ccc88554a68112e5b34~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224548C30E2F05B2412DDD4004&amp;rrcfp=03245832&amp;x-expires=1778769953&amp;x-signature=KvvPOQSci0WJ8S7f8CNSATYetkM%3D"
+                            alt="物流运输"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-7 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-7 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元讲述了货郎叫卖、集贸市场等塞外乡村商贸发展历程，展示了河套地区商贸活动的历史变迁。</p>
+                <p>从早期的货郎走街串巷，到后来的定期集市，再到现代的农贸市场，商贸活动的形式不断演变，但始终是连接农村与外界的重要纽带。</p>
+                <p>通过这些商贸活动，不仅促进了物资流通和经济发展，也促进了文化交流和社会进步，是河套地区社会发展的重要推动力。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="6"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="8">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 8: 良风遗俗 -->
+    <div id="page-8" class="page unit-8 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第八单元：良风遗俗</h2>
+            <!-- 恢复原有 Flip Cards -->
+            <div class="grid grid-cols-2 gap-3 md:gap-6 mb-8 px-2">
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">传统婚礼</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">展示河套地区传统婚礼的完整流程，包括说媒、定亲、迎娶、拜堂等环节。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <h3 class="text-lg md:text-xl font-bold px-2">丧葬习俗</h3>
+                        </div>
+                        <div class="flip-card-back">
+                            <p class="text-sm md:text-base px-2">介绍当地的丧葬礼仪和习俗，反映人们对生命和死亡的理解与尊重。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-8">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/e331b5884c514216b7eccefc23e69bd0~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224846C5244919F590EE7EFDE8&amp;rrcfp=e75484ac&amp;x-expires=1778770126&amp;x-signature=AoBLTY7PpMcMSDNveBaW%2FWFpvqY%3D"
+                            alt="传统婚礼"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/1fabfe3c4e344307b7df51e3a05792a7~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722491012A407A1F752F5D8677D&amp;rrcfp=e75484ac&amp;x-expires=1778770150&amp;x-signature=yxF%2BEpW%2FT9n0n0b%2FmCROXLA8Ieo%3D"
+                            alt="婚礼仪式"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/611db966dc5e4e7185e6e1d653cbc26a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722493245AC4BC854CB35392C3C&amp;rrcfp=e75484ac&amp;x-expires=1778770173&amp;x-signature=AZ6YhoXPApEQIN2rrEdXX2%2FxUNc%3D"
+                            alt="传统服饰"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/cb0b36fb2dc94113864642bb94f8c963~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507224957461F5EB656B2A52CA8B6&amp;rrcfp=03245832&amp;x-expires=1778770202&amp;x-signature=IKyBGqLNt5kui6yJm%2F%2BxX%2B2GNQg%3D"
+                            alt="民俗活动"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-8 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-8 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元展示了乡村婚丧嫁娶等传统习俗，重点呈现了婚礼流程，展示了河套地区独特的民俗文化。</p>
+                <p>这些传统习俗不仅是日常生活的重要组成部分，也是文化传承的重要载体，蕴含着丰富的历史信息和文化内涵。</p>
+                <p>通过这些良风遗俗，我们可以了解到河套地区人民的价值观念、伦理道德和审美情趣，以及他们如何在日常生活中体现对传统的尊重和传承。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="7"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="9">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 9: 医疗教育 -->
+    <div id="page-9" class="page unit-9 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第九单元：医疗教育</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-9">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/0a518d26456e4c4986e9281e5d2c5182~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507225436553647B3AC84F41F7803&amp;rrcfp=e75484ac&amp;x-expires=1778770477&amp;x-signature=fkIf9%2BBL%2BWyJOayQds2lUH2jrOQ%3D"
+                            alt="旧时学堂"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/39de09d0fb7641a79cb0937f6f25dce5~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507225448C076EA2B8117A10A2E1C&amp;rrcfp=e75484ac&amp;x-expires=1778770489&amp;x-signature=JbtnNg3Q%2FNCYeTD4KPyF627WG2g%3D"
+                            alt="传统医学"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/7efbaaf358cc4677883a3ae9edd4f649~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050722551463FBA186144D09DC2B9B&amp;rrcfp=e75484ac&amp;x-expires=1778770514&amp;x-signature=k4EhwgjNb1vPt47Sq8G9CB3QUTQ%3D"
+                            alt="医学器具"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p3-search.byteimg.com/obj/labis/b9aa0752f417eebe34bf8aefe821c444" alt="学生用品">
+                    </div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-9 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-9 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元陈列了旧时学生、医生相关用品，反映了乡村文教与医疗状况，展示了河套地区教育和医疗事业的发展历程。</p>
+                <p>从早期的私塾教育到现代的学校教育，从传统的中医诊疗到现代的西医医疗，教育和医疗事业的发展反映了社会的进步和文明的提升。</p>
+                <p>通过这些展品，我们可以了解到河套地区人民对知识的追求和对健康的重视，以及他们如何在艰苦的条件下发展教育和医疗事业。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="8"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="10">下一单元 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 10: 人民公社展 -->
+    <div id="page-10" class="page unit-10 p-4 md:p-8">
+        <div class="container mx-auto max-w-4xl pt-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-primary mb-6 text-center">第十单元：人民公社展</h2>
+            <div class="gallery-container mb-8">
+                <div class="gallery" id="gallery-10">
+                    <div class="gallery-item" data-index="0"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/938eb1902f9544d195d9dca8075636b6~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=202605072310138BF6DB9204795FD2A90E&amp;rrcfp=e75484ac&amp;x-expires=1778771414&amp;x-signature=J0i8FBeMVO1blkBiGREp%2BUJKQ6w%3D"
+                            alt="人民公社时期"></div>
+                    <div class="gallery-item" data-index="1"><img
+                            src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/0b6449387e2f47bfac22a8df35a87ea9~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507231029A1A543DDBA40B9E0E2BE&amp;rrcfp=e75484ac&amp;x-expires=1778771429&amp;x-signature=yog%2FvdpkTDbJ4c6vVG9jxtF%2B%2Fns%3D"
+                            alt="生产工具"></div>
+                    <div class="gallery-item" data-index="2"><img
+                            src="https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/c7ca1933f0d5435ca9dadb8f2866f95a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=20260507230945CADBDBDD06F6CB2BA553&amp;rrcfp=e75484ac&amp;x-expires=1778771385&amp;x-signature=FEhP02B9sIoJuwyRpaR1PR09H9Q%3D"
+                            alt="生活器物"></div>
+                    <div class="gallery-item" data-index="3"><img
+                            src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/21585cf26afc4d73823e472775434e52~tplv-a9rns2rl98-image.image?lk3s=8e244e95&amp;rcl=2026050723105147CE3FEA45CB4D2BBF01&amp;rrcfp=e75484ac&amp;x-expires=1778771451&amp;x-signature=8c6W%2Bmn3j%2F9jAgv1e5mFfxQpePM%3D"
+                            alt="时代印记"></div>
+                </div>
+                <div class="flex justify-center mt-4 gap-4 relative z-10">
+                    <button
+                        class="gallery-nav prev-10 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-left text-xl"></i></button>
+                    <button
+                        class="gallery-nav next-10 w-10 h-10 rounded-full flex items-center justify-center shadow-md"><i
+                            class="fa fa-angle-right text-xl"></i></button>
+                </div>
+            </div>
+            <!-- 原文保留 -->
+            <div class="mt-16 text-sm md:text-base leading-relaxed space-y-4 px-2">
+                <p>本单元展示了人民公社及文革时代的生产生活器物，留存了时代印记，展示了这一特殊历史时期的社会面貌。</p>
+                <p>从集体劳动的工具到日常生活用品，从宣传标语到个人物品，每一件展品都承载着特定历史时期的记忆和情感。</p>
+                <p>通过这些展品，我们可以了解到那个时代的社会制度、经济状况和人们的生活方式，以及它们对今天的影响和启示。</p>
+            </div>
+            <div class="mt-8 flex justify-between px-2">
+                <button class="nav-btn btn-primary text-sm" data-page="9"><i class="fa fa-arrow-left mr-1"></i>
+                    上一单元</button>
+                <button class="nav-btn btn-primary text-sm" data-page="11">结语 <i
+                        class="fa fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit 11: 结语 -->
+    <div id="page-11" class="page unit-11 p-4 md:p-8 flex flex-col justify-center min-h-screen">
+        <div class="container mx-auto max-w-4xl py-12">
+            <h2 class="text-3xl md:text-4xl font-bold text-light mb-8 text-center">结语</h2>
+            <div
+                class="text-light text-sm md:text-base leading-relaxed space-y-6 px-4 bg-black/20 p-6 rounded-xl shadow-lg">
+                <p class="text-lg md:text-xl text-center font-medium mb-4">通过参观公田村博物馆的十个单元，我们仿佛穿越时空，领略了河套农耕文化的丰富多彩和深厚底蕴。
+                </p>
+                <p>从自然环境到农耕生产，从养殖副业到岁时节日，从塞外乡村到娱乐游艺，从商贸物流到良风遗俗，从医疗教育到人民公社，每个单元都展示了河套地区独特的文化特色和历史变迁。</p>
+                <p>这些展品不仅是历史的见证，也是文化的传承，它们承载着劳动人民的智慧和创造，记录着社会的发展和进步。</p>
+                <p>希望通过这次参观，能够让更多的人了解和认识河套农耕文化，增强文化自信，促进文化传承和创新。</p>
+                <p>让我们共同努力，保护和传承这些宝贵的文化遗产，让它们在新时代焕发出新的生机和活力。</p>
+            </div>
+            <div class="mt-12 flex justify-center px-2">
+                <button class="nav-btn btn-primary bg-light text-primary px-8 py-3 text-lg" data-page="0">
+                    <i class="fa fa-home mr-2"></i> 返回首页
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== 全局变量 ======
+        let isLightboxOpen = false;
+        let isSwipingGallery = false;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(() => { document.querySelector('.loading').classList.add('hidden'); }, 1000);
+
+            checkHashOnLoad();
+            initGalleries();
+            initFlipCards();
+            initLightbox();
+            initNavigation();
+            initPullToNavigate(); // 新增的阻尼滑动跳转功能
+
+            window.addEventListener('popstate', function () { checkHashOnLoad(false); });
+        });
+
+        // ====== 1. 路由检测 ======
+        function checkHashOnLoad(pushState = true) {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#page-')) {
+                const pageIndex = parseInt(hash.replace('#page-', ''));
+                if (!isNaN(pageIndex) && document.getElementById(`page-${pageIndex}`)) {
+                    navigateToPage(pageIndex, false);
+                    return;
+                }
+            }
+            navigateToPage(0, pushState);
+        }
+
+        // ====== 2. 3D画廊逻辑 (带滑动防抖) ======
+        function initGalleries() {
+            for (let i = 1; i <= 10; i++) {
+                const gallery = document.getElementById(`gallery-${i}`);
+                if (!gallery) continue;
+
+                const items = gallery.querySelectorAll('.gallery-item');
+                const totalItems = items.length;
+                let autoPlayTimer;
+
+                updateGalleryItems(gallery, items, 0);
+
+                const changeImage = (direction) => {
+                    const currentIndex = parseInt(gallery.dataset.currentIndex || 0);
+                    let newIndex = direction === 'next' ? (currentIndex + 1) % totalItems : (currentIndex - 1 + totalItems) % totalItems;
+                    updateGalleryItems(gallery, items, newIndex);
+                    startAutoPlay();
+                };
+
+                const startAutoPlay = () => {
+                    clearInterval(autoPlayTimer);
+                    autoPlayTimer = setInterval(() => changeImage('next'), 4000);
+                };
+
+                document.querySelector(`.prev-${i}`).addEventListener('click', () => changeImage('prev'));
+                document.querySelector(`.next-${i}`).addEventListener('click', () => changeImage('next'));
+
+                // 画廊触摸滑动
+                const container = gallery.parentElement;
+                let touchStartX = 0, touchEndX = 0;
+
+                container.addEventListener('touchstart', e => {
+                    touchStartX = e.changedTouches[0].screenX;
+                    clearInterval(autoPlayTimer);
+                }, { passive: true });
+
+                container.addEventListener('touchmove', e => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    if (Math.abs(touchEndX - touchStartX) > 10) isSwipingGallery = true; // 标记正在滑动，防止误触大图
+                }, { passive: true });
+
+                container.addEventListener('touchend', e => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    const threshold = 40;
+                    if (touchEndX < touchStartX - threshold) changeImage('next');
+                    else if (touchEndX > touchStartX + threshold) changeImage('prev');
+                    else startAutoPlay();
+
+                    setTimeout(() => isSwipingGallery = false, 50); // 触摸结束后重置防抖标记
+                }, { passive: true });
+
+                startAutoPlay();
+            }
+        }
+
+        function updateGalleryItems(gallery, items, currentIndex) {
+            gallery.dataset.currentIndex = currentIndex;
+            const totalItems = items.length;
+            items.forEach((item, index) => {
+                const angle = (index - currentIndex) * 60;
+                const radius = window.innerWidth < 768 ? 160 : 220;
+                const x = radius * Math.sin(angle * Math.PI / 180);
+                const z = radius * Math.cos(angle * Math.PI / 180);
+                item.style.transform = `translateX(${x}px) translateZ(${z}px) rotateY(${-angle}deg)`;
+                item.style.opacity = z > -100 ? '1' : '0';
+                item.style.zIndex = Math.floor(z + radius);
+            });
+        }
+
+        // ====== 3. 翻牌动画 ======
+        function initFlipCards() {
+            document.querySelectorAll('.flip-card').forEach(card => {
+                card.addEventListener('click', function () { this.classList.toggle('flipped'); });
+            });
+        }
+
+        // ====== 4. 全局大图预览 Lightbox ======
+        function initLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const closeBtn = document.getElementById('lightbox-close');
+
+            const closeLightbox = () => {
+                lightbox.classList.remove('opacity-100');
+                lightboxImg.classList.remove('scale-100');
+                setTimeout(() => {
+                    lightbox.classList.add('hidden');
+                    lightboxImg.src = '';
+                    isLightboxOpen = false;
+                }, 300);
+            };
+
+            document.querySelectorAll('.gallery-item img').forEach(img => {
+                img.addEventListener('click', (e) => {
+                    if (isSwipingGallery) return; // 如果在滑动切换图片，则不触发放大
+                    lightboxImg.src = e.target.src;
+                    lightbox.classList.remove('hidden');
+                    // 触发渐显动画
+                    setTimeout(() => {
+                        lightbox.classList.add('opacity-100');
+                        lightboxImg.classList.add('scale-100');
+                    }, 10);
+                    isLightboxOpen = true;
+                });
+            });
+
+            closeBtn.addEventListener('click', closeLightbox);
+            lightbox.addEventListener('click', (e) => {
+                if (e.target !== lightboxImg) closeLightbox(); // 点击背景关闭
+            });
+        }
+
+        // ====== 5. 导航跳转逻辑 ======
+        function initNavigation() {
+            document.querySelectorAll('.nav-dot, .nav-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const pageIndex = parseInt(this.dataset.page);
+                    navigateToPage(pageIndex, true);
+                });
+            });
+        }
+
+        function navigateToPage(pageIndex, pushHistory = true) {
+            const allPages = document.querySelectorAll('.page');
+            const targetPage = document.getElementById(`page-${pageIndex}`);
+            if (!targetPage) return;
+
+            if (pushHistory) history.pushState(null, null, `#page-${pageIndex}`);
+
+            allPages.forEach(page => {
+                page.classList.remove('active');
+                page.style.zIndex = '-1';
+                page.style.opacity = '0';
+                page.style.visibility = 'hidden';
+            });
+
+            targetPage.offsetHeight; // force reflow
+            targetPage.style.zIndex = '2';
+            targetPage.style.opacity = '1';
+            targetPage.style.visibility = 'visible';
+            targetPage.classList.add('active');
+
+            document.querySelectorAll('.nav-dot').forEach(dot => dot.classList.remove('active'));
+            const activeDot = document.querySelector(`.nav-dot[data-page="${pageIndex}"]`);
+            if (activeDot) activeDot.classList.add('active');
+
+            targetPage.scrollTo(0, 0);
+            gsap.fromTo(targetPage,
+                { opacity: 0, y: 40 },
+                { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }
+            );
+        }
+
+        // ====== 6. 边缘阻尼滑动跳转 (Pull up/down to navigate) ======
+        function initPullToNavigate() {
+            const pages = document.querySelectorAll('.page');
+            const threshold = 70; // 触发跳转的拉拽阈值
+
+            pages.forEach(page => {
+                let startY = 0, currentY = 0;
+                let isAtTop = false, isAtBottom = false, dragging = false;
+
+                // 动态插入提示文字元素
+                const topIndicator = document.createElement('div');
+                topIndicator.className = 'pull-indicator top';
+                const bottomIndicator = document.createElement('div');
+                bottomIndicator.className = 'pull-indicator bottom';
+                page.appendChild(topIndicator);
+                page.appendChild(bottomIndicator);
+
+                page.addEventListener('touchstart', (e) => {
+                    if (isLightboxOpen) return; // 如果大图打开时不触发
+                    // 检查是否在边界
+                    isAtTop = page.scrollTop <= 0;
+                    isAtBottom = Math.ceil(page.scrollTop + page.clientHeight) >= page.scrollHeight - 1;
+
+                    if (isAtTop || isAtBottom) {
+                        startY = e.touches[0].clientY;
+                        dragging = true;
+                        page.style.transition = 'none'; // 移除默认过渡以跟随手指
+                    }
+                }, { passive: true });
+
+                page.addEventListener('touchmove', (e) => {
+                    if (!dragging || isLightboxOpen) return;
+                    currentY = e.touches[0].clientY;
+                    let deltaY = currentY - startY;
+
+                    // 在顶部下拉
+                    if (isAtTop && deltaY > 0) {
+                        if (e.cancelable) e.preventDefault(); // 防止iOS橡皮筋效果
+                        let dampenY = deltaY * 0.35; // 阻尼系数
+                        page.style.transform = `translateY(${dampenY}px)`;
+
+                        topIndicator.style.opacity = dampenY > 20 ? '1' : '0';
+                        topIndicator.innerHTML = dampenY > threshold ? '<i class="fa fa-arrow-up"></i> 松开前往上一单元' : '继续下拉返回 <i class="fa fa-angle-down"></i>';
+                    }
+                    // 在底部上拉
+                    else if (isAtBottom && deltaY < 0) {
+                        if (e.cancelable) e.preventDefault();
+                        let dampenY = deltaY * 0.35;
+                        page.style.transform = `translateY(${dampenY}px)`;
+
+                        bottomIndicator.style.opacity = Math.abs(dampenY) > 20 ? '1' : '0';
+                        bottomIndicator.innerHTML = Math.abs(dampenY) > threshold ? '松开进入下一单元 <i class="fa fa-arrow-down"></i>' : '<i class="fa fa-angle-up"></i> 继续上拉进入下一章';
+                    }
+                }, { passive: false });
+
+                page.addEventListener('touchend', (e) => {
+                    if (!dragging) return;
+                    dragging = false;
+
+                    // 重置动画和提示文本
+                    page.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                    page.style.transform = 'translateY(0)';
+                    topIndicator.style.opacity = '0';
+                    bottomIndicator.style.opacity = '0';
+
+                    let deltaY = currentY - startY;
+                    let pageIndex = parseInt(page.id.replace('page-', ''));
+
+                    // 判断是否达到跳转阈值
+                    if (isAtTop && deltaY * 0.35 > threshold) {
+                        if (pageIndex > 0) navigateToPage(pageIndex - 1);
+                    } else if (isAtBottom && deltaY * 0.35 < -threshold) {
+                        if (pageIndex < 11) navigateToPage(pageIndex + 1);
+                    }
+                }, { passive: true });
+            });
+        }
+    </script>
+</body>
+
+</html>
